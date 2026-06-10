@@ -72,6 +72,7 @@
     "mcp-callback-server.ts",
     "mcp-auth-flow.ts",
     "mcp-panel.ts",
+    "panel-keys.ts",
     "logger.ts",
     "errors.ts",
     "app-bridge.bundle.js",
