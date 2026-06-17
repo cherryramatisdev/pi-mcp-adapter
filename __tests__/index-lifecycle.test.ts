@@ -128,6 +128,19 @@ function createPi() {
 
 describe("mcpAdapter session lifecycle", () => {
   const originalDirectTools = process.env.MCP_DIRECT_TOOLS;
+  const mcpFlagIndex = process.argv.indexOf("--mcp");
+
+  beforeAll(() => {
+    if (!process.argv.includes("--mcp")) {
+      process.argv.push("--mcp");
+    }
+  });
+
+  afterAll(() => {
+    if (mcpFlagIndex === -1) {
+      process.argv.pop();
+    }
+  });
 
   beforeEach(() => {
     delete process.env.MCP_DIRECT_TOOLS;

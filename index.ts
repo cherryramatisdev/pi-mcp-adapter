@@ -12,6 +12,21 @@ import { initializeOAuth, shutdownOAuth } from "./mcp-auth-flow.ts";
 import { createMcpDirectToolCallRenderer, renderMcpProxyToolCall, renderMcpToolResult } from "./tool-result-renderer.ts";
 
 export default function mcpAdapter(pi: ExtensionAPI) {
+  // Always register flags so they appear in --help
+  pi.registerFlag("mcp-config", {
+    description: "Path to MCP config file",
+    type: "string",
+  });
+  pi.registerFlag("mcp", {
+    description: "Enable MCP server connections and tools",
+    type: "boolean",
+  });
+
+  // Without --mcp, the extension is a complete no-op
+  if (!process.argv.includes("--mcp")) {
+    return;
+  }
+
   let state: McpExtensionState | null = null;
   let initPromise: Promise<McpExtensionState> | null = null;
   let lifecycleGeneration = 0;
@@ -80,11 +95,6 @@ export default function mcpAdapter(pi: ExtensionAPI) {
   }
 
   const getPiTools = (): ToolInfo[] => pi.getAllTools();
-
-  pi.registerFlag("mcp-config", {
-    description: "Path to MCP config file",
-    type: "string",
-  });
 
   pi.on("session_start", async (_event, ctx) => {
     const generation = ++lifecycleGeneration;

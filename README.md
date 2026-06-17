@@ -19,10 +19,18 @@ But the MCP ecosystem has useful stuff - databases, browsers, APIs. This adapter
 ## Install
 
 ```bash
-pi install npm:pi-mcp-adapter
+pi install git:git@github.com:cherryramatisdev/pi-mcp-adapter.git
 ```
 
 Restart Pi after installation.
+
+> **Important:** MCP support is now **opt-in via `--mcp`**. Without this flag the extension is a complete no-op — no tools are registered, no servers connect, and no MCP commands are available. Only the `--mcp` and `--mcp-config` flags appear in `--help`.
+>
+> ```bash
+> pi --mcp          # enable MCP for this session
+> ```
+>
+> Use `--mcp` only when you need MCP servers. The rest of the time Pi starts clean, with zero MCP overhead in your context window.
 
 ## What happens on first run
 
@@ -37,6 +45,12 @@ The adapter reads standard MCP files automatically. No extra setup needed if you
 If you prefer the terminal, you can also run `pi-mcp-adapter init` after install to scan for host-specific configs and add missing compatibility imports to the Pi agent dir (`~/.pi/agent/mcp.json` by default, or `$PI_CODING_AGENT_DIR/mcp.json` when set).
 
 ## Quick Start
+
+Start Pi with the `--mcp` flag to activate the extension:
+
+```bash
+pi --mcp
+```
 
 Preferred project config: `.mcp.json`
 
