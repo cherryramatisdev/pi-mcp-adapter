@@ -31,6 +31,14 @@ Restart Pi after installation.
 > ```
 >
 > Use `--mcp` only when you need MCP servers. The rest of the time Pi starts clean, with zero MCP overhead in your context window.
+>
+> Forgot the flag? Enable MCP from inside a session started without it:
+>
+> ```bash
+> /enable-mcp   # activate MCP for this session
+> ```
+>
+> This registers the MCP tools and `/mcp` commands on the spot. The choice is remembered per session (it survives a `/mcp setup` reload), so MCP stays off in any other session until you enable it there too.
 
 ## What happens on first run
 
