@@ -280,6 +280,9 @@ export interface OAuthConfig {
   clientUri?: string;
 }
 
+// Permission mode for running MCP actions (proxy tool calls and direct tools)
+export type ActionPermission = "ask" | "allow";
+
 // Server configuration
 export interface ServerEntry {
   command?: string;
@@ -313,6 +316,8 @@ export interface ServerEntry {
   directTools?: boolean | string[];
   // Exclude specific MCP tools/resources by original or prefixed name
   excludeTools?: string[];
+  // Permission mode for running actions on this server (overrides settings.actionPermission)
+  actionPermission?: ActionPermission;
   // Debug
   debug?: boolean;  // Show server stderr (default: false)
 }
@@ -333,6 +338,13 @@ export interface McpSettings {
    * instruction when unset.
    */
   authRequiredMessage?: string;
+  /**
+   * Permission mode for running MCP actions (proxy tool calls and direct
+   * tools). "ask" (default) confirms with the user before every action;
+   * "allow" runs actions without asking. Per-server actionPermission overrides
+   * this global setting.
+   */
+  actionPermission?: ActionPermission;
 }
 
 // Root config

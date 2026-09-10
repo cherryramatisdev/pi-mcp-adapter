@@ -12,6 +12,7 @@ import { formatToolName, isToolExcluded } from "./types.ts";
 import { resourceNameToToolName } from "./resource-tools.ts";
 import { authenticate, supportsOAuth } from "./mcp-auth-flow.ts";
 import { formatAuthRequiredMessage } from "./utils.ts";
+import { confirmAction } from "./action-permission.ts";
 
 const BUILTIN_NAMES = new Set(["read", "bash", "edit", "write", "grep", "find", "ls", "mcp"]);
 
@@ -276,7 +277,7 @@ export function createDirectToolExecutor(
   getInitPromise: () => Promise<McpExtensionState> | null,
   spec: DirectToolSpec
 ): DirectToolExecute {
-  return async function execute(_toolCallId, params) {
+  return async function execute(_toolCallId, params, _signal, _onUpdate, ctx) {
     let state = getState();
     const initPromise = getInitPromise();
 
@@ -342,6 +343,14 @@ export function createDirectToolExecutor(
     }
 
     let uiSession: UiSessionRuntime | null = null;
+
+    const permission = await confirmAction(state.config, spec.serverName, spec.originalName, params ?? {}, ctx?.ui ?? state.ui);
+    if (!permission.approved) {
+      return {
+        content: [{ type: "text" as const, text: permission.reason ?? "MCP action was not approved" }],
+        details: { error: "action_denied", server: spec.serverName, tool: spec.originalName },
+      };
+    }
 
     try {
       state.manager.touch(spec.serverName);

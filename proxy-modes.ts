@@ -1,4 +1,4 @@
-import type { AgentToolResult, ToolInfo } from "@earendil-works/pi-coding-agent";
+import type { AgentToolResult, ExtensionContext, ToolInfo } from "@earendil-works/pi-coding-agent";
 import { UrlElicitationRequiredError } from "@modelcontextprotocol/sdk/types.js";
 import { checkSync } from "recheck";
 import type { McpExtensionState } from "./state.ts";
@@ -9,6 +9,7 @@ import { buildToolMetadata, getToolNames, findToolByName, formatSchema } from ".
 import { transformMcpContent } from "./tool-registrar.ts";
 import { maybeStartUiSession, type UiSessionRuntime } from "./ui-session.ts";
 import { formatAuthRequiredMessage, truncateAtWord } from "./utils.ts";
+import { confirmAction } from "./action-permission.ts";
 import { authenticate, completeAuthFromInput, startAuth, supportsOAuth } from "./mcp-auth-flow.ts";
 
 type ProxyToolResult = AgentToolResult<Record<string, unknown>>;
@@ -581,6 +582,7 @@ export async function executeCall(
   args?: Record<string, unknown>,
   serverOverride?: string,
   getPiTools?: () => ToolInfo[],
+  ctx?: ExtensionContext,
 ): Promise<ProxyToolResult> {
   let serverName: string | undefined = serverOverride;
   let toolMeta: ToolMetadata | undefined;
@@ -824,6 +826,14 @@ export async function executeCall(
   }
 
   let uiSession: UiSessionRuntime | null = null;
+
+  const permission = await confirmAction(state.config, serverName, toolMeta.originalName, args, ctx?.ui ?? state.ui);
+  if (!permission.approved) {
+    return {
+      content: [{ type: "text" as const, text: permission.reason ?? "MCP action was not approved" }],
+      details: { mode: "call", error: "action_denied", server: serverName, tool: toolMeta.originalName },
+    };
+  }
 
   try {
     state.manager.touch(serverName);

@@ -39,7 +39,7 @@ async function createConnectedManager(mode: ExtensionMode, answers: string[] = [
 function createState(manager: McpServerManager, metadata: ToolMetadata[]): McpExtensionState {
   return {
     manager,
-    config: { settings: {}, mcpServers: { real: definition } },
+    config: { settings: { actionPermission: "allow" }, mcpServers: { real: definition } },
     toolMetadata: new Map([["real", metadata]]),
     failureTracker: new Map(),
     uiResourceHandler: new UiResourceHandler(manager),

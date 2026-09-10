@@ -160,6 +160,7 @@ Pi-specific files are the write targets for imported or shared global servers wh
 | `exposeResources` | Expose MCP resources as tools (default: true) |
 | `directTools` | `true`, `string[]`, or `false` — register tools individually instead of through proxy |
 | `excludeTools` | `string[]` of tool names to hide (matches original names like `get_screenshot` and prefixed names like `figma_get_screenshot`) |
+| `actionPermission` | `"ask"` (default) or `"allow"` — permission mode for running actions on this server; overrides `settings.actionPermission` |
 | `debug` | Show server stderr (default: false) |
 
 For pre-registered browser OAuth clients, set `oauth.redirectUri` to the exact callback registered with the provider, for example `"http://localhost:3118/callback"`. Dynamic clients normally omit it and use a lazy OS-assigned localhost callback port.
@@ -209,11 +210,35 @@ You can also pass only the `code` query parameter with `args: '{"code":"..."}'`.
 | `directTools` | Global default for all servers (default: false). Per-server overrides this. |
 | `disableProxyTool` | Hide the `mcp` proxy tool once configured direct tools are fully available from cache. |
 | `autoAuth` | Auto-run OAuth on `connect`/tool calls when a server needs auth, then retry once (default: false). |
+| `actionPermission` | Permission mode for running MCP actions: `"ask"` (default) confirms with the user before every proxy tool call and direct tool call, `"allow"` runs them without asking. Per-server `actionPermission` overrides this. In headless sessions the default `"ask"` refuses actions (set `"allow"` to run without confirmation). |
 | `sampling` | Allow MCP servers to sample through Pi models, honoring `modelPreferences.hints` before current/default fallback (default: true when UI approval is available). |
 | `samplingAutoApprove` | Skip sampling confirmation prompts. Required for sampling in non-UI sessions (default: false). |
 | `elicitation` | Allow MCP servers to request user input through Pi dialogs (default: true when Pi UI is available). |
 
 Per-server `idleTimeout` overrides the global setting.
+
+### Action Permissions
+
+By default the adapter asks for your permission before running any MCP action — both `mcp({ tool: ... })` proxy calls and direct tools. A confirmation dialog shows the server, tool name, and arguments; declining skips the call.
+
+To run MCP actions without asking, set `actionPermission` to `"allow"` — globally or per server:
+
+```json
+{
+  "settings": {
+    "actionPermission": "allow"
+  },
+  "mcpServers": {
+    "trusted-server": {
+      "command": "npx",
+      "args": ["-y", "trusted-mcp"],
+      "actionPermission": "allow"
+    }
+  }
+}
+```
+
+Per-server `actionPermission` overrides the global setting. In headless sessions the default `"ask"` mode refuses actions with a hint, since there is no UI to confirm with — set `"allow"` if you want unattended runs.
 
 ### MCP Elicitation
 

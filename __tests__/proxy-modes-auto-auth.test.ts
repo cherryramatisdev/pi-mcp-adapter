@@ -166,7 +166,7 @@ describe("proxy auto auth", () => {
       decrementInFlight: vi.fn(),
     };
     const state = {
-      config: { settings: {}, mcpServers: { demo: { command: "demo" } } },
+      config: { settings: { actionPermission: "allow" }, mcpServers: { demo: { command: "demo" } } },
       manager,
       toolMetadata: new Map([["demo", [{
         name: "demo_search",
@@ -216,7 +216,7 @@ describe("proxy auto auth", () => {
 
     const state = {
       config: {
-        settings: { autoAuth: true, toolPrefix: "server" },
+        settings: { autoAuth: true, actionPermission: "allow", toolPrefix: "server" },
         mcpServers: {
           demo: { url: "https://api.example.com/mcp", auth: "oauth" },
         },

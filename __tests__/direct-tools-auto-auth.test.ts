@@ -49,7 +49,7 @@ describe("direct tools auto auth", () => {
 
     const state = {
       config: {
-        settings: { autoAuth: true },
+        settings: { autoAuth: true, actionPermission: "allow" },
         mcpServers: {
           demo: { url: "https://api.example.com/mcp", auth: "oauth" },
         },
@@ -95,7 +95,7 @@ describe("direct tools auto auth", () => {
 
     const state = {
       config: {
-        settings: { autoAuth: true },
+        settings: { autoAuth: true, actionPermission: "allow" },
         mcpServers: {
           demo: { url: "https://api.example.com/mcp", auth: "oauth" },
         },
@@ -146,7 +146,7 @@ describe("direct tools auto auth", () => {
       client: { callTool: vi.fn().mockRejectedValue(error) },
     };
     const state = {
-      config: { settings: {}, mcpServers: { demo: { command: "demo" } } },
+      config: { settings: { actionPermission: "allow" }, mcpServers: { demo: { command: "demo" } } },
       manager: {
         getConnection: vi.fn(() => connection),
         handleUrlElicitationRequired: vi.fn().mockResolvedValue("accept"),
@@ -179,6 +179,7 @@ describe("direct tools auto auth", () => {
       config: {
         settings: {
           autoAuth: true,
+          actionPermission: "allow",
           authRequiredMessage: "Reconnect ${server} from the host app.",
         },
         mcpServers: {
