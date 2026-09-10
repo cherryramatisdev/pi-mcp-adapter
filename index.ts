@@ -1,7 +1,7 @@
 import type { ExtensionAPI, ExtensionContext, ToolInfo } from "@earendil-works/pi-coding-agent";
 import type { McpExtensionState } from "./state.ts";
 import { Type } from "typebox";
-import { showStatus, showTools, reconnectServers, authenticateServer, logoutServer, openMcpAuthPanel, openMcpPanel, openMcpSetup } from "./commands.ts";
+import { showStatus, showTools, reconnectServers, authenticateServer, logoutServer, openMcpConnectDialog, openMcpSetupDialog, openMcpAuthDialog, toggleDirectToolsDialog, type PanelFlowResult } from "./commands.ts";
 import { loadMcpConfig } from "./config.ts";
 import { buildProxyDescription, createDirectToolExecutor, getMissingConfiguredDirectToolServers, resolveDirectTools } from "./direct-tools.ts";
 import { flushMetadataCache, initializeMcp, updateStatusBar } from "./init.ts";
@@ -133,6 +133,17 @@ export default function mcpAdapter(pi: ExtensionAPI) {
         const rest = parts.slice(1).join(" ");
 
         switch (subcommand) {
+          case "connect":
+            await openMcpConnectDialog(state, pi, ctx, earlyConfigPath);
+            break;
+          case "direct": {
+            const result = await toggleDirectToolsDialog(state, pi, ctx, earlyConfigPath);
+            if (result?.configChanged) {
+              await ctx.reload();
+              return;
+            }
+            break;
+          }
           case "reconnect":
             await reconnectServers(state, ctx, targetServer);
             break;
@@ -140,7 +151,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
             await showTools(state, ctx);
             break;
           case "setup": {
-            const result = await openMcpSetup(state, pi, ctx, earlyConfigPath, "setup");
+            const result = await openMcpSetupDialog(state, pi, ctx, earlyConfigPath);
             if (result?.configChanged) {
               await ctx.reload();
               return;
@@ -160,7 +171,12 @@ export default function mcpAdapter(pi: ExtensionAPI) {
           case "":
           default:
             if (ctx.hasUI) {
-              const result = await openMcpPanel(state, pi, ctx, earlyConfigPath);
+              let result: PanelFlowResult;
+              if (Object.keys(state.config.mcpServers).length === 0) {
+                result = await openMcpSetupDialog(state, pi, ctx, earlyConfigPath);
+              } else {
+                result = await openMcpConnectDialog(state, pi, ctx, earlyConfigPath);
+              }
               if (result?.configChanged) {
                 await ctx.reload();
                 return;
@@ -196,7 +212,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
         }
 
         if (!serverName) {
-          await openMcpAuthPanel(state, pi, ctx, earlyConfigPath);
+          await openMcpAuthDialog(state, pi, ctx, earlyConfigPath);
           return;
         }
 

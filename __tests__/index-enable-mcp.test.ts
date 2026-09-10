@@ -21,9 +21,10 @@ const mocks = vi.hoisted(() => ({
   reconnectServers: vi.fn(),
   authenticateServer: vi.fn(),
   logoutServer: vi.fn(),
-  openMcpAuthPanel: vi.fn(),
-  openMcpPanel: vi.fn(),
-  openMcpSetup: vi.fn(),
+  openMcpConnectDialog: vi.fn(),
+  openMcpSetupDialog: vi.fn(),
+  openMcpAuthDialog: vi.fn(),
+  toggleDirectToolsDialog: vi.fn(),
   executeAuthComplete: vi.fn(),
   executeAuthStart: vi.fn(),
   executeCall: vi.fn(),
@@ -69,9 +70,10 @@ vi.mock("../commands.ts", () => ({
   reconnectServers: mocks.reconnectServers,
   authenticateServer: mocks.authenticateServer,
   logoutServer: mocks.logoutServer,
-  openMcpAuthPanel: mocks.openMcpAuthPanel,
-  openMcpPanel: mocks.openMcpPanel,
-  openMcpSetup: mocks.openMcpSetup,
+  openMcpConnectDialog: mocks.openMcpConnectDialog,
+  openMcpSetupDialog: mocks.openMcpSetupDialog,
+  openMcpAuthDialog: mocks.openMcpAuthDialog,
+  toggleDirectToolsDialog: mocks.toggleDirectToolsDialog,
 }));
 
 vi.mock("../proxy-modes.ts", () => ({

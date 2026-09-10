@@ -47,7 +47,7 @@ The adapter reads standard MCP files automatically. No extra setup needed if you
 | You already have... | What happens |
 |---------------------|--------------|
 | `.mcp.json` or `~/.config/mcp/mcp.json` | Pi uses it immediately. The first time you open `/mcp`, you'll see a short heads-up explaining which file Pi detected and that Pi only writes adapter-specific overrides to its own files. |
-| Host-specific configs (Cursor, Claude Code, Codex, etc.) but no standard MCP files | Run `/mcp setup` to adopt those host configs into Pi. The setup flow shows exactly what it found, lets you pick which ones to import, and previews the exact file changes before writing. |
+| Host-specific configs (Cursor, Claude Code, Codex, etc.) but no standard MCP files | Run `/mcp setup` to adopt those host configs into Pi. The setup flow lists exactly what it found and confirms each import before writing. |
 | Nothing configured yet | Run `/mcp setup` to scaffold a minimal `.mcp.json`, quick-add RepoPrompt, or inspect what the adapter discovered on your machine. |
 
 If you prefer the terminal, you can also run `pi-mcp-adapter init` after install to scan for host-specific configs and add missing compatibility imports to the Pi agent dir (`~/.pi/agent/mcp.json` by default, or `$PI_CODING_AGENT_DIR/mcp.json` when set).
@@ -285,17 +285,17 @@ To exclude specific tools while still using `directTools: true`, add `excludeToo
 }
 ```
 
-`excludeTools` filters direct tools, proxy search/list/describe, and the `/mcp` panel view.
+`excludeTools` filters direct tools, proxy search/list/describe, and `/mcp` tool lists.
 
 Each direct tool costs ~150-300 tokens in the system prompt (name + description + schema). Good for targeted sets of 5-20 tools. For servers with 75+ tools, stick with the proxy or pick specific tools with a `string[]`.
 
 Direct tools register from the metadata cache in the Pi agent dir (`~/.pi/agent/mcp-cache.json` by default, or `$PI_CODING_AGENT_DIR/mcp-cache.json` when set), so no server connections are needed at startup. On the first session after adding `directTools` to a new server, the cache won't exist yet — tools fall back to proxy-only and the cache populates in the background. To force it: `/mcp reconnect <server>`.
 
-When you change direct-tool toggles in `/mcp` or write new config through `/mcp setup`, the extension triggers Pi's normal reload flow automatically. That refreshes extensions, prompts, skills, and MCP tool registration in one shot, so newly configured direct tools can appear without a manual restart.
+When you change direct-tool toggles in `/mcp direct` or write new config through `/mcp setup`, the extension triggers Pi's normal reload flow automatically. That refreshes extensions, prompts, skills, and MCP tool registration in one shot, so newly configured direct tools can appear without a manual restart.
 
-**Interactive configuration:** Run `/mcp` to open an interactive panel showing all servers with connection status, tools, and direct/proxy toggles. You can reconnect servers and toggle tools between direct and proxy from the same overlay. For OAuth, press Enter on a server that needs auth or `ctrl+a` on any OAuth server.
+**Simple connect flow:** Run `/mcp` to pick a server from a stock Pi dialog and connect it. Each server shows its status (`idle`, `connected`, `needs auth`, `failed`); servers that need OAuth run the authorization flow first. Run `/mcp direct` to toggle individual tools between direct and proxy from another stock dialog. Both surfaces use Pi's native dialogs, so they behave like every other picker in Pi.
 
-**Guided first-run setup:** Run `/mcp setup` to inspect detected shared MCP files, adopt compatibility imports from other hosts, open discovered config paths, preview exact before/after file diffs for writes, scaffold a minimal project `.mcp.json`, or quick-add RepoPrompt into a standard/shared MCP file.
+**Guided first-run setup:** Run `/mcp setup` to adopt compatibility imports from other hosts (confirmed one at a time), scaffold a minimal project `.mcp.json`, quick-add RepoPrompt into a standard/shared MCP file, open discovered config paths, or review an example config and the precedence rules.
 
 **Subagent integration:** If you use the subagent extension, agents can request direct MCP tools in their frontmatter with `mcp:server-name` syntax. See the subagent README for details.
 
@@ -401,18 +401,19 @@ Tool names are fuzzy-matched on hyphens and underscores — `context7_resolve_li
 
 | Command | What it does |
 |---------|--------------|
-| `/mcp` | Interactive panel and first-run onboarding surface |
+| `/mcp` | Simple server picker — choose a server to connect; authenticates first if it needs OAuth |
+| `/mcp direct` | Toggle individual tools between direct and proxy |
 | `/mcp setup` | Guided setup for imports, a minimal `.mcp.json`, RepoPrompt quick-add, and config-path inspection |
 | `/mcp tools` | List all tools |
 | `/mcp reconnect` | Reconnect all servers |
 | `/mcp reconnect <server>` | Connect or reconnect a single server |
 | `/mcp logout <server>` | Clear stored OAuth credentials for a server and disconnect it |
-| `/mcp-auth` | Open an OAuth server picker in interactive UI sessions |
+| `/mcp-auth` | Pick an OAuth server to authenticate in interactive UI sessions |
 | `/mcp-auth <server>` | OAuth setup for a specific server |
 
 If `settings.autoAuth` is `true`, `mcp({ connect: ... })`, `mcp({ tool: ... })`, and direct tool calls automatically run OAuth when needed and retry once.
 
-In interactive sessions, you can also authenticate from `/mcp` with `ctrl+a` or Enter on a server that needs auth. In remote/headless sessions, use the proxy tool's `auth-start` and `auth-complete` actions to copy the authorization URL locally and paste the redirect URL back into Pi. `/mcp-auth` without a server only opens a picker in the interactive UI.
+In interactive sessions, pick a server from `/mcp` and it connects — running OAuth automatically when the server needs it. `/mcp-auth` without a server opens the same stock picker filtered to OAuth-capable servers. In remote/headless sessions, use the proxy tool's `auth-start` and `auth-complete` actions to copy the authorization URL locally and paste the redirect URL back into Pi.
 
 ## How It Works
 

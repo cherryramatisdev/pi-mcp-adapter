@@ -17,9 +17,10 @@ const mocks = vi.hoisted(() => ({
   reconnectServers: vi.fn(),
   authenticateServer: vi.fn(),
   logoutServer: vi.fn(),
-  openMcpAuthPanel: vi.fn(),
-  openMcpPanel: vi.fn(),
-  openMcpSetup: vi.fn(),
+  openMcpConnectDialog: vi.fn(),
+  openMcpSetupDialog: vi.fn(),
+  openMcpAuthDialog: vi.fn(),
+  toggleDirectToolsDialog: vi.fn(),
   executeAuthComplete: vi.fn(),
   executeAuthStart: vi.fn(),
   executeCall: vi.fn(),
@@ -65,9 +66,10 @@ vi.mock("../commands.ts", () => ({
   reconnectServers: mocks.reconnectServers,
   authenticateServer: mocks.authenticateServer,
   logoutServer: mocks.logoutServer,
-  openMcpAuthPanel: mocks.openMcpAuthPanel,
-  openMcpPanel: mocks.openMcpPanel,
-  openMcpSetup: mocks.openMcpSetup,
+  openMcpConnectDialog: mocks.openMcpConnectDialog,
+  openMcpSetupDialog: mocks.openMcpSetupDialog,
+  openMcpAuthDialog: mocks.openMcpAuthDialog,
+  toggleDirectToolsDialog: mocks.toggleDirectToolsDialog,
 }));
 
 vi.mock("../proxy-modes.ts", () => ({
@@ -342,7 +344,7 @@ describe("mcpAdapter session lifecycle", () => {
 
     await commandDef.handler("setup", { hasUI: true, ui: { notify: vi.fn() } });
 
-    expect(mocks.openMcpSetup).toHaveBeenCalledWith(state, api, expect.any(Object), undefined, "setup");
+    expect(mocks.openMcpSetupDialog).toHaveBeenCalledWith(state, api, expect.any(Object), undefined);
   });
 
   it("routes `/mcp logout <server>` to credential logout", async () => {
@@ -389,7 +391,7 @@ describe("mcpAdapter session lifecycle", () => {
   it("triggers core reload after setup changes config", async () => {
     const initialState = createState();
     mocks.initializeMcp.mockResolvedValue(initialState);
-    mocks.openMcpSetup.mockResolvedValue({ configChanged: true });
+    mocks.openMcpSetupDialog.mockResolvedValue({ configChanged: true });
 
     const { default: mcpAdapter } = await import("../index.ts");
     const { api, handlers } = createPi();
@@ -427,7 +429,7 @@ describe("mcpAdapter session lifecycle", () => {
     const commandDef = api.registerCommand.mock.calls.find((call: any[]) => call[0] === "mcp-auth")?.[1];
     await commandDef.handler("", { hasUI: true, ui });
 
-    expect(mocks.openMcpAuthPanel).toHaveBeenCalledWith(state, api, expect.any(Object), undefined);
+    expect(mocks.openMcpAuthDialog).toHaveBeenCalledWith(state, api, expect.any(Object), undefined);
     expect(mocks.authenticateServer).not.toHaveBeenCalled();
   });
 
@@ -449,7 +451,7 @@ describe("mcpAdapter session lifecycle", () => {
     await commandDef.handler("github", { hasUI: true, ui });
 
     expect(mocks.authenticateServer).toHaveBeenCalledWith("github", state.config, expect.any(Object));
-    expect(mocks.openMcpAuthPanel).not.toHaveBeenCalled();
+    expect(mocks.openMcpAuthDialog).not.toHaveBeenCalled();
   });
 
   it("documents that no-arg `/mcp-auth` has no non-UI picker or command feedback path", async () => {
@@ -463,7 +465,7 @@ describe("mcpAdapter session lifecycle", () => {
     const commandDef = api.registerCommand.mock.calls.find((call: any[]) => call[0] === "mcp-auth")?.[1];
     await commandDef.handler("", { hasUI: false });
 
-    expect(mocks.openMcpAuthPanel).not.toHaveBeenCalled();
+    expect(mocks.openMcpAuthDialog).not.toHaveBeenCalled();
     expect(mocks.authenticateServer).not.toHaveBeenCalled();
   });
 

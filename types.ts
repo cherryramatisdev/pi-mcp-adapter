@@ -377,19 +377,6 @@ export interface McpAuthResult {
   message?: string;
 }
 
-export interface McpPanelCallbacks {
-  reconnect: (serverName: string) => Promise<boolean>;
-  canAuthenticate: (serverName: string) => boolean;
-  authenticate: (serverName: string) => Promise<McpAuthResult>;
-  getConnectionStatus: (serverName: string) => "connected" | "idle" | "failed" | "needs-auth";
-  refreshCacheAfterReconnect: (serverName: string) => import("./metadata-cache.ts").ServerCacheEntry | null;
-}
-
-export interface McpPanelResult {
-  changes: Map<string, true | string[] | false>;
-  cancelled: boolean;
-}
-
 /**
  * Get server prefix based on tool prefix mode.
  */

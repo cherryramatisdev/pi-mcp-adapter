@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Replaced all custom TUI panels with stock Pi dialogs for a simpler, native UI. `/mcp` now opens a server picker that connects on selection (running OAuth first when needed), `/mcp direct` toggles direct/proxy tools per tool, `/mcp setup` guides imports/scaffolding/RepoPrompt via select+confirm dialogs, and `/mcp-auth` uses a stock picker. Removed the custom MCP management, setup, and auth panels.
+
 ## [2.10.0] - 2026-06-13
 
 ### Added
