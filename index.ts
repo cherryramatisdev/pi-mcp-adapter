@@ -66,16 +66,132 @@ export default function mcpAdapter(pi: ExtensionAPI) {
     }
   }
 
+  const earlyConfigPath = getConfigPathFromArgv();
+
+  // Register /mcp and /mcp-auth eagerly (not gated on enablement) so they are
+  // picked up by pi's slash-command autocomplete, which snapshots registered
+  // commands once at session start and is not refreshed by later
+  // registerCommand() calls. Their handlers already no-op with a notification
+  // when MCP is not initialized for this session.
+  pi.registerCommand("mcp", {
+    description: "Show MCP server status",
+    handler: async (args, ctx) => {
+      if (!state && initPromise) {
+        try {
+          state = await initPromise;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (ctx.hasUI) ctx.ui.notify(`MCP initialization failed: ${message}`, "error");
+          return;
+        }
+      }
+      if (!state) {
+        if (ctx.hasUI) ctx.ui.notify("MCP not initialized", "error");
+        return;
+      }
+
+      const parts = args?.trim()?.split(/\s+/) ?? [];
+      const subcommand = parts[0] ?? "";
+      const targetServer = parts[1];
+      const rest = parts.slice(1).join(" ");
+
+      switch (subcommand) {
+        case "connect":
+          await openMcpConnectDialog(state, pi, ctx, earlyConfigPath);
+          break;
+        case "direct": {
+          const result = await toggleDirectToolsDialog(state, pi, ctx, earlyConfigPath);
+          if (result?.configChanged) {
+            await ctx.reload();
+            return;
+          }
+          break;
+        }
+        case "reconnect":
+          await reconnectServers(state, ctx, targetServer);
+          break;
+        case "tools":
+          await showTools(state, ctx);
+          break;
+        case "setup": {
+          const result = await openMcpSetupDialog(state, pi, ctx, earlyConfigPath);
+          if (result?.configChanged) {
+            await ctx.reload();
+            return;
+          }
+          break;
+        }
+        case "logout": {
+          const serverName = rest;
+          if (!serverName) {
+            if (ctx.hasUI) ctx.ui.notify("Usage: /mcp logout <server>", "error");
+            return;
+          }
+          await logoutServer(serverName, state, ctx);
+          break;
+        }
+        case "status":
+        case "":
+        default:
+          if (ctx.hasUI) {
+            let result: PanelFlowResult;
+            if (Object.keys(state.config.mcpServers).length === 0) {
+              result = await openMcpSetupDialog(state, pi, ctx, earlyConfigPath);
+            } else {
+              result = await openMcpConnectDialog(state, pi, ctx, earlyConfigPath);
+            }
+            if (result?.configChanged) {
+              await ctx.reload();
+              return;
+            }
+          } else {
+            await showStatus(state, ctx);
+          }
+          break;
+      }
+    },
+  });
+
+  pi.registerCommand("mcp-auth", {
+    description: "Authenticate with an MCP server (OAuth)",
+    handler: async (args, ctx) => {
+      const serverName = args?.trim();
+      if (!serverName && !ctx.hasUI) {
+        return;
+      }
+
+      if (!state && initPromise) {
+        try {
+          state = await initPromise;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (ctx.hasUI) ctx.ui.notify(`MCP initialization failed: ${message}`, "error");
+          return;
+        }
+      }
+      if (!state) {
+        if (ctx.hasUI) ctx.ui.notify("MCP not initialized", "error");
+        return;
+      }
+
+      if (!serverName) {
+        await openMcpAuthDialog(state, pi, ctx, earlyConfigPath);
+        return;
+      }
+
+      await authenticateServer(serverName, state.config, ctx);
+    },
+  });
+
   /**
-   * Register the MCP surface (direct tools, proxy tool, /mcp and /mcp-auth
-   * commands). Idempotent per extension instance. Called at load time with
-   * --mcp, or lazily from /enable-mcp in a non-MCP session.
+   * Register the MCP tool surface (direct tools, proxy tool). Idempotent per
+   * extension instance. Called at load time with --mcp, or lazily from
+   * /enable-mcp in a non-MCP session.
    */
   function registerSurface(): void {
     if (surfaceRegistered) return;
     surfaceRegistered = true;
 
-    const earlyConfigPath = getConfigPathFromArgv();
     const earlyConfig = loadMcpConfig(earlyConfigPath);
     const earlyCache = loadMetadataCache();
     const prefix = earlyConfig.settings?.toolPrefix ?? "server";
@@ -109,116 +225,6 @@ export default function mcpAdapter(pi: ExtensionAPI) {
     }
 
     const getPiTools = (): ToolInfo[] => pi.getAllTools();
-
-    pi.registerCommand("mcp", {
-      description: "Show MCP server status",
-      handler: async (args, ctx) => {
-        if (!state && initPromise) {
-          try {
-            state = await initPromise;
-          } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            if (ctx.hasUI) ctx.ui.notify(`MCP initialization failed: ${message}`, "error");
-            return;
-          }
-        }
-        if (!state) {
-          if (ctx.hasUI) ctx.ui.notify("MCP not initialized", "error");
-          return;
-        }
-
-        const parts = args?.trim()?.split(/\s+/) ?? [];
-        const subcommand = parts[0] ?? "";
-        const targetServer = parts[1];
-        const rest = parts.slice(1).join(" ");
-
-        switch (subcommand) {
-          case "connect":
-            await openMcpConnectDialog(state, pi, ctx, earlyConfigPath);
-            break;
-          case "direct": {
-            const result = await toggleDirectToolsDialog(state, pi, ctx, earlyConfigPath);
-            if (result?.configChanged) {
-              await ctx.reload();
-              return;
-            }
-            break;
-          }
-          case "reconnect":
-            await reconnectServers(state, ctx, targetServer);
-            break;
-          case "tools":
-            await showTools(state, ctx);
-            break;
-          case "setup": {
-            const result = await openMcpSetupDialog(state, pi, ctx, earlyConfigPath);
-            if (result?.configChanged) {
-              await ctx.reload();
-              return;
-            }
-            break;
-          }
-          case "logout": {
-            const serverName = rest;
-            if (!serverName) {
-              if (ctx.hasUI) ctx.ui.notify("Usage: /mcp logout <server>", "error");
-              return;
-            }
-            await logoutServer(serverName, state, ctx);
-            break;
-          }
-          case "status":
-          case "":
-          default:
-            if (ctx.hasUI) {
-              let result: PanelFlowResult;
-              if (Object.keys(state.config.mcpServers).length === 0) {
-                result = await openMcpSetupDialog(state, pi, ctx, earlyConfigPath);
-              } else {
-                result = await openMcpConnectDialog(state, pi, ctx, earlyConfigPath);
-              }
-              if (result?.configChanged) {
-                await ctx.reload();
-                return;
-              }
-            } else {
-              await showStatus(state, ctx);
-            }
-            break;
-        }
-      },
-    });
-
-    pi.registerCommand("mcp-auth", {
-      description: "Authenticate with an MCP server (OAuth)",
-      handler: async (args, ctx) => {
-        const serverName = args?.trim();
-        if (!serverName && !ctx.hasUI) {
-          return;
-        }
-
-        if (!state && initPromise) {
-          try {
-            state = await initPromise;
-          } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            if (ctx.hasUI) ctx.ui.notify(`MCP initialization failed: ${message}`, "error");
-            return;
-          }
-        }
-        if (!state) {
-          if (ctx.hasUI) ctx.ui.notify("MCP not initialized", "error");
-          return;
-        }
-
-        if (!serverName) {
-          await openMcpAuthDialog(state, pi, ctx, earlyConfigPath);
-          return;
-        }
-
-        await authenticateServer(serverName, state.config, ctx);
-      },
-    });
 
     if (shouldRegisterProxyTool) {
       (pi.registerTool as (tool: unknown) => unknown)({

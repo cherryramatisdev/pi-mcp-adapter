@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Replaced all custom TUI panels with stock Pi dialogs for a simpler, native UI. `/mcp` now opens a server picker that connects on selection (running OAuth first when needed), `/mcp direct` toggles direct/proxy tools per tool, `/mcp setup` guides imports/scaffolding/RepoPrompt via select+confirm dialogs, and `/mcp-auth` uses a stock picker. Removed the custom MCP management, setup, and auth panels.
+- Registered `/mcp` and `/mcp-auth` eagerly at extension load (instead of only after `/enable-mcp` or `--mcp`) so they appear in Pi's slash-command autocomplete. The commands no-op with an "MCP not initialized" notice until MCP is enabled for the session; tools and server connections remain opt-in as before.
 
 ## [2.10.0] - 2026-06-13
 

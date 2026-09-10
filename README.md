@@ -24,7 +24,7 @@ pi install git:git@github.com:cherryramatisdev/pi-mcp-adapter.git
 
 Restart Pi after installation.
 
-> **Important:** MCP support is now **opt-in via `--mcp`**. Without this flag the extension is a complete no-op — no tools are registered, no servers connect, and no MCP commands are available. Only the `--mcp` and `--mcp-config` flags appear in `--help`.
+> **Important:** MCP support is now **opt-in via `--mcp`**. Without this flag the extension is a no-op: no tools are registered and no servers connect. The `/mcp` and `/mcp-auth` commands remain available (they no-op with an "MCP not initialized" notice until enabled) so they show up in slash-command autocomplete, but nothing else is active.
 >
 > ```bash
 > pi --mcp          # enable MCP for this session
@@ -38,7 +38,7 @@ Restart Pi after installation.
 > /enable-mcp   # activate MCP for this session
 > ```
 >
-> This registers the MCP tools and `/mcp` commands on the spot. The choice is remembered per session (it survives a `/mcp setup` reload), so MCP stays off in any other session until you enable it there too.
+> This registers the MCP tools on the spot (`/mcp` commands are always available). The choice is remembered per session (it survives a `/mcp setup` reload), so MCP stays off in any other session until you enable it there too.
 
 ## What happens on first run
 

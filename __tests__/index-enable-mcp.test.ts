@@ -162,15 +162,21 @@ describe("mcpAdapter command mode (/enable-mcp)", () => {
     }
   });
 
-  it("is a complete no-op at startup: no MCP tools or commands, no init", async () => {
+  it("registers /mcp and /mcp-auth eagerly but defers tools and init until /enable-mcp", async () => {
     const { default: mcpAdapter } = await import("../index.ts");
     const { api, handlers } = createPi();
     mcpAdapter(api);
 
     expect(findCommand(api, "enable-mcp")).toBeDefined();
+    expect(findCommand(api, "mcp")).toBeDefined();
+    expect(findCommand(api, "mcp-auth")).toBeDefined();
     expect(api.registerTool).not.toHaveBeenCalled();
-    expect(findCommand(api, "mcp")).toBeUndefined();
-    expect(findCommand(api, "mcp-auth")).toBeUndefined();
+
+    // Eager commands no-op until MCP is actually enabled for the session.
+    const ui = { notify: vi.fn() };
+    const mcp = findCommand(api, "mcp");
+    await mcp.handler("", { hasUI: true, ui });
+    expect(ui.notify).toHaveBeenCalledWith("MCP not initialized", "error");
 
     const sessionStart = handlers.get("session_start");
     expect(sessionStart).toBeTypeOf("function");
