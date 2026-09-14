@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced all custom TUI panels with stock Pi dialogs for a simpler, native UI. `/mcp` now opens a server picker that connects on selection (running OAuth first when needed), `/mcp direct` toggles direct/proxy tools per tool, `/mcp setup` guides imports/scaffolding/RepoPrompt via select+confirm dialogs, and `/mcp-auth` uses a stock picker. Removed the custom MCP management, setup, and auth panels.
 - Registered `/mcp` and `/mcp-auth` eagerly at extension load (instead of only after `/enable-mcp` or `--mcp`) so they appear in Pi's slash-command autocomplete. The commands no-op with an "MCP not initialized" notice until MCP is enabled for the session; tools and server connections remain opt-in as before.
 
+### Fixed
+- Fixed a hang where parallel MCP tool calls asked for permission at the same time: Pi's interactive mode has a single dialog slot, so the second prompt replaced the first and its promise never resolved, leaving the turn stuck even though the other MCP call had returned. Permission prompts are now queued so only one is shown at a time, and each prompt dismisses (or drops out of the queue) when its tool call is interrupted.
+
 ## [2.10.0] - 2026-06-13
 
 ### Added

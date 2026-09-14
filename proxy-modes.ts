@@ -583,6 +583,7 @@ export async function executeCall(
   serverOverride?: string,
   getPiTools?: () => ToolInfo[],
   ctx?: ExtensionContext,
+  signal?: AbortSignal,
 ): Promise<ProxyToolResult> {
   let serverName: string | undefined = serverOverride;
   let toolMeta: ToolMetadata | undefined;
@@ -827,7 +828,7 @@ export async function executeCall(
 
   let uiSession: UiSessionRuntime | null = null;
 
-  const permission = await confirmAction(state.config, serverName, toolMeta.originalName, args, ctx?.ui ?? state.ui);
+  const permission = await confirmAction(state.config, serverName, toolMeta.originalName, args, ctx?.ui ?? state.ui, signal);
   if (!permission.approved) {
     return {
       content: [{ type: "text" as const, text: permission.reason ?? "MCP action was not approved" }],

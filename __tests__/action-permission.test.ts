@@ -113,4 +113,83 @@ describe("confirmAction", () => {
 
     expect(result).toEqual({ approved: true });
   });
+
+  it("serializes concurrent prompts so parallel calls cannot clobber the dialog", async () => {
+    const resolvers: Array<(value: boolean) => void> = [];
+    let active = 0;
+    let maxActive = 0;
+    const ui = {
+      confirm: vi.fn(() => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        return new Promise<boolean>((resolve) => {
+          resolvers.push((value) => {
+            active -= 1;
+            resolve(value);
+          });
+        });
+      }),
+    };
+    const config = createConfig();
+
+    const first = confirmAction(config, "demo", "one", {}, ui as never);
+    const second = confirmAction(config, "demo", "two", {}, ui as never);
+
+    await vi.waitFor(() => expect(ui.confirm).toHaveBeenCalledTimes(1));
+    expect(resolvers).toHaveLength(1);
+
+    resolvers[0](true);
+    await expect(first).resolves.toEqual({ approved: true });
+
+    await vi.waitFor(() => expect(ui.confirm).toHaveBeenCalledTimes(2));
+    expect(resolvers).toHaveLength(2);
+
+    resolvers[1](true);
+    await expect(second).resolves.toEqual({ approved: true });
+    expect(maxActive).toBe(1);
+  });
+
+  it("drops a queued prompt when its call is aborted", async () => {
+    const resolvers: Array<(value: boolean) => void> = [];
+    const ui = {
+      confirm: vi.fn(() => new Promise<boolean>((resolve) => { resolvers.push(resolve); })),
+    };
+    const config = createConfig();
+    const controller = new AbortController();
+
+    const first = confirmAction(config, "demo", "one", {}, ui as never);
+    const second = confirmAction(config, "demo", "two", {}, ui as never, controller.signal);
+
+    await vi.waitFor(() => expect(ui.confirm).toHaveBeenCalledTimes(1));
+    controller.abort();
+
+    await expect(second).resolves.toMatchObject({ approved: false });
+    expect(ui.confirm).toHaveBeenCalledTimes(1);
+    expect(resolvers).toHaveLength(1);
+
+    resolvers[0](true);
+    await expect(first).resolves.toEqual({ approved: true });
+  });
+
+  it("dismisses the open dialog and reports cancellation when aborted", async () => {
+    const ui = {
+      confirm: vi.fn((_title: string, _message: string, opts?: { signal?: AbortSignal }) =>
+        new Promise<boolean>((resolve) => {
+          opts?.signal?.addEventListener("abort", () => resolve(false), { once: true });
+        })),
+    };
+    const config = createConfig();
+    const controller = new AbortController();
+
+    const promise = confirmAction(config, "demo", "one", {}, ui as never, controller.signal);
+    await vi.waitFor(() => expect(ui.confirm).toHaveBeenCalledTimes(1));
+    controller.abort();
+
+    const result = await promise;
+    expect(result.approved).toBe(false);
+    expect(result.reason).toContain("cancelled");
+    expect(ui.confirm).toHaveBeenCalledWith("MCP action permission", expect.any(String), {
+      signal: controller.signal,
+    });
+  });
 });

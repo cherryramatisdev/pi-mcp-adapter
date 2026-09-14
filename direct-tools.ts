@@ -277,7 +277,7 @@ export function createDirectToolExecutor(
   getInitPromise: () => Promise<McpExtensionState> | null,
   spec: DirectToolSpec
 ): DirectToolExecute {
-  return async function execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+  return async function execute(_toolCallId, params, signal, _onUpdate, ctx) {
     let state = getState();
     const initPromise = getInitPromise();
 
@@ -344,7 +344,7 @@ export function createDirectToolExecutor(
 
     let uiSession: UiSessionRuntime | null = null;
 
-    const permission = await confirmAction(state.config, spec.serverName, spec.originalName, params ?? {}, ctx?.ui ?? state.ui);
+    const permission = await confirmAction(state.config, spec.serverName, spec.originalName, params ?? {}, ctx?.ui ?? state.ui, signal);
     if (!permission.approved) {
       return {
         content: [{ type: "text" as const, text: permission.reason ?? "MCP action was not approved" }],
