@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added `actionPermission` setting (`"ask"` by default) that asks the user for permission before running MCP actions — both `mcp({ tool: ... })` proxy calls and direct tools. Set it to `"allow"` globally or per server to run actions without confirmation.
+- Added fuzzy search to the `/mcp`, `/mcp-auth`, and `/mcp direct` pickers. The selector renders inline at the prompt (same window as the stock Pi dialog) with a search field, so long server and tool lists are filterable. RPC/print modes keep the stock non-searchable selector.
 
 ### Changed
 - Replaced all custom TUI panels with stock Pi dialogs for a simpler, native UI. `/mcp` now opens a server picker that connects on selection (running OAuth first when needed), `/mcp direct` toggles direct/proxy tools per tool, `/mcp setup` guides imports/scaffolding/RepoPrompt via select+confirm dialogs, and `/mcp-auth` uses a stock picker. Removed the custom MCP management, setup, and auth panels.

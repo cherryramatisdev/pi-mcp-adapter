@@ -17,6 +17,7 @@ import { supportsOAuth, authenticate, removeAuth } from "./mcp-auth-flow.ts";
 import { getAuthForUrl } from "./mcp-auth.ts";
 import { isToolExcluded } from "./types.ts";
 import { loadOnboardingState, markSetupCompleted as persistSetupCompleted, markSharedConfigHintShown } from "./onboarding-state.ts";
+import { selectSearchable, type SearchableSelectItem } from "./select-searchable.ts";
 import { openPath } from "./utils.ts";
 
 function getServerConnectionStatus(
@@ -40,6 +41,19 @@ function getServerConnectionStatus(
   if (connection?.status === "connected") return "connected";
   if (getFailureAgeSeconds(state, serverName) !== null) return "failed";
   return "idle";
+}
+
+/**
+ * Build selector items from display labels plus the plain text used for
+ * fuzzy search. Labels carry status decoration ("name  ✓ connected",
+ * "● tool"), which would otherwise defeat prefix/fuzzy matching.
+ */
+function toSearchableItems(labels: string[], searchKeys: string[]): SearchableSelectItem[] {
+  return labels.map((label, index) => ({
+    value: label,
+    label,
+    searchText: searchKeys[index] ?? label,
+  }));
 }
 
 export async function showStatus(state: McpExtensionState, ctx: ExtensionContext): Promise<void> {
@@ -144,7 +158,7 @@ export async function openMcpConnectDialog(
     }
   });
 
-  const choice = await ctx.ui.select("Connect MCP server:", labels);
+  const choice = await selectSearchable(ctx, "Connect MCP server:", toSearchableItems(labels, serverNames));
   if (!choice) return { configChanged: false };
 
   const index = labels.indexOf(choice);
@@ -384,7 +398,7 @@ export async function openMcpSetupDialog(
   while (true) {
     const options = buildSetupOptions(discovery);
     const labels = options.map((option) => option.label);
-    const pick = await ctx.ui.select("MCP setup:", labels);
+    const pick = await selectSearchable(ctx, "MCP setup:", toSearchableItems(labels, labels));
     if (!pick) return { configChanged };
     const option = options.find((o) => o.label === pick);
     if (!option) return { configChanged };
@@ -441,7 +455,7 @@ export async function openMcpSetupDialog(
       }
       case "paths": {
         const paths = getDetectedPaths(discovery);
-        const pickPath = await ctx.ui.select("Open config path:", paths);
+        const pickPath = await selectSearchable(ctx, "Open config path:", toSearchableItems(paths, paths));
         if (pickPath) await openPath(pi, pickPath);
         break;
       }
@@ -500,7 +514,7 @@ export async function openMcpAuthDialog(
     return `${name}  ${statusText}`;
   });
 
-  const choice = await ctx.ui.select("Authenticate with:", labels);
+  const choice = await selectSearchable(ctx, "Authenticate with:", toSearchableItems(labels, oauthServers.map(([name]) => name)));
   if (!choice) return { configChanged: false };
 
   const index = labels.indexOf(choice);
@@ -532,7 +546,7 @@ export async function toggleDirectToolsDialog(
   const cache = loadMetadataCache();
   const prefix = state.config.settings?.toolPrefix ?? "server";
 
-  const serverPick = await ctx.ui.select("Toggle direct tools for:", serverNames);
+  const serverPick = await selectSearchable(ctx, "Toggle direct tools for:", toSearchableItems(serverNames, serverNames));
   if (!serverPick) return { configChanged: false };
   const serverIndex = serverNames.indexOf(serverPick);
   if (serverIndex < 0) return { configChanged: false };
@@ -569,7 +583,14 @@ export async function toggleDirectToolsDialog(
   while (true) {
     const labels = [...isDirect.entries()].map(([name, direct]) => `${direct ? "●" : "○"} ${name}`);
     const doneLabel = "Done — save changes";
-    const pick = await ctx.ui.select(`Direct tools for ${serverName}:`, [...labels, doneLabel]);
+    const pick = await selectSearchable(
+      ctx,
+      `Direct tools for ${serverName}:`,
+      [
+        ...toSearchableItems(labels, toolNames),
+        { value: doneLabel, label: doneLabel, searchText: "done save changes" },
+      ],
+    );
     if (!pick || pick === doneLabel) break;
     const labelIndex = labels.indexOf(pick);
     if (labelIndex < 0) break;
