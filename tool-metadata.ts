@@ -37,6 +37,7 @@ export function buildToolMetadata(
       inputSchema: tool.inputSchema,
       uiResourceUri,
       uiStreamMode: extractToolUiStreamMode(tool._meta),
+      readOnly: tool.annotations?.readOnlyHint === true,
     });
   }
 
@@ -52,6 +53,7 @@ export function buildToolMetadata(
         originalName: baseName,
         description: resource.description ?? `Read resource: ${resource.uri}`,
         resourceUri: resource.uri,
+        readOnly: true,
       });
     }
   }

@@ -31,6 +31,48 @@ export interface ActionConfirmation {
 
 class PromptCancelledError extends Error {}
 
+// Cross-extension event bus for "MCP permission dialog is showing".
+//
+// The adapter and other extensions (e.g. notify-on-idle) run in the same pi
+// process, so a slot on globalThis is enough to connect them. Both sides
+// create-or-join the same Set, so registration order between extensions does
+// not matter. Read-only and auto-approved actions never emit; this fires only
+// when a real confirmation dialog is about to appear.
+export const PERMISSION_ASK_LISTENERS_KEY = "__piMcpAdapterPermissionAskListeners__";
+
+export interface PermissionAskDetail {
+  serverName: string;
+  toolName: string;
+}
+
+export type PermissionAskListener = (detail: PermissionAskDetail) => void;
+
+/**
+ * Notify other extensions that a permission dialog is about to be shown.
+ * Listener errors are swallowed so a broken listener cannot block the gate.
+ */
+export function emitPermissionAsk(serverName: string, toolName: string): void {
+  const globals = globalThis as unknown as Record<string, unknown>;
+  const listeners = (globals[PERMISSION_ASK_LISTENERS_KEY] ?? new Set()) as Set<PermissionAskListener>;
+  for (const listener of [...listeners]) {
+    try {
+      listener({ serverName, toolName });
+    } catch {
+      // A failing listener must not block the permission prompt.
+    }
+  }
+}
+
+/**
+ * Subscribe to permission-ask events. Returns an unsubscribe function.
+ */
+export function onPermissionAsk(listener: PermissionAskListener): () => void {
+  const globals = globalThis as unknown as Record<string, unknown>;
+  const listeners = (globals[PERMISSION_ASK_LISTENERS_KEY] ??= new Set()) as Set<PermissionAskListener>;
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
 /**
  * Pi's interactive mode exposes only a single dialog slot. Tool calls run in
  * parallel by default, so two concurrent `ui.confirm()` calls clobber each
@@ -70,11 +112,13 @@ async function runPromptExclusive<T>(fn: () => Promise<T>, signal?: AbortSignal)
 
 /**
  * Ask the user for permission before running an MCP action when the effective
- * permission mode is "ask". Returns `{ approved: true }` immediately in "allow"
- * mode. When "ask" is set but no interactive UI is available, the action is
- * refused with a message explaining how to opt out. Concurrent calls queue up;
- * passing the tool-call `signal` dismisses the dialog (or drops a queued prompt)
- * when the call is interrupted.
+ * permission mode is "ask" and the tool is not read-only. Read-only tools
+ * (server-declared `readOnlyHint` or resource reads) pass without prompting
+ * since they cannot mutate server state. Returns `{ approved: true }`
+ * immediately in "allow" mode. When "ask" is set but no interactive UI is
+ * available, mutating actions are refused with a message explaining how to opt
+ * out. Concurrent calls queue up; passing the tool-call `signal` dismisses the
+ * dialog (or drops a queued prompt) when the call is interrupted.
  */
 export async function confirmAction(
   config: McpConfig,
@@ -83,8 +127,13 @@ export async function confirmAction(
   args: Record<string, unknown> | undefined,
   ui: ExtensionContext["ui"] | undefined,
   signal?: AbortSignal,
+  readOnly?: boolean,
 ): Promise<ActionConfirmation> {
   if (getActionPermission(config, serverName) === "allow") {
+    return { approved: true };
+  }
+
+  if (readOnly) {
     return { approved: true };
   }
 
@@ -103,9 +152,12 @@ export async function confirmAction(
   let approved: boolean;
   try {
     approved = await runPromptExclusive(
-      () => signal
-        ? ui.confirm("MCP action permission", message, { signal })
-        : ui.confirm("MCP action permission", message),
+      () => {
+        emitPermissionAsk(serverName, toolName);
+        return signal
+          ? ui.confirm("MCP action permission", message, { signal })
+          : ui.confirm("MCP action permission", message);
+      },
       signal,
     );
   } catch (error) {

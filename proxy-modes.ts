@@ -828,7 +828,7 @@ export async function executeCall(
 
   let uiSession: UiSessionRuntime | null = null;
 
-  const permission = await confirmAction(state.config, serverName, toolMeta.originalName, args, ctx?.ui ?? state.ui, signal);
+  const permission = await confirmAction(state.config, serverName, toolMeta.originalName, args, ctx?.ui ?? state.ui, signal, toolMeta.readOnly);
   if (!permission.approved) {
     return {
       content: [{ type: "text" as const, text: permission.reason ?? "MCP action was not approved" }],

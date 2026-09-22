@@ -18,6 +18,7 @@ export interface CachedTool {
   inputSchema?: unknown;
   uiResourceUri?: string;
   uiStreamMode?: "eager" | "stream-first";
+  readOnly?: boolean;
 }
 
 export interface CachedResource {
@@ -134,6 +135,7 @@ export function reconstructToolMetadata(
       inputSchema: tool.inputSchema,
       uiResourceUri: tool.uiResourceUri,
       uiStreamMode: tool.uiStreamMode,
+      readOnly: tool.readOnly,
     });
   }
 
@@ -150,6 +152,7 @@ export function reconstructToolMetadata(
         originalName: baseName,
         description: resource.description ?? `Read resource: ${resource.uri}`,
         resourceUri: resource.uri,
+        readOnly: true,
       });
     }
   }
@@ -166,6 +169,7 @@ export function serializeTools(tools: McpTool[]): CachedTool[] {
       inputSchema: t.inputSchema,
       uiResourceUri: tryGetToolUiResourceUri(t),
       uiStreamMode: extractToolUiStreamMode(t._meta),
+      readOnly: t.annotations?.readOnlyHint === true,
     }));
 }
 

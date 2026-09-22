@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { confirmAction, getActionPermission } from "../action-permission.ts";
+import { confirmAction, getActionPermission, onPermissionAsk } from "../action-permission.ts";
 import type { McpConfig } from "../types.ts";
 
 function createConfig(overrides: Partial<McpConfig> = {}): McpConfig {
@@ -114,6 +114,34 @@ describe("confirmAction", () => {
     expect(result).toEqual({ approved: true });
   });
 
+  it("approves read-only actions without prompting in ask mode", async () => {
+    const ui = { confirm: vi.fn(async () => true) };
+    const config = createConfig();
+
+    const result = await confirmAction(config, "demo", "list_files", {}, ui as never, undefined, true);
+
+    expect(result).toEqual({ approved: true });
+    expect(ui.confirm).not.toHaveBeenCalled();
+  });
+
+  it("approves read-only actions in headless ask mode", async () => {
+    const config = createConfig();
+
+    const result = await confirmAction(config, "demo", "list_files", {}, undefined, undefined, true);
+
+    expect(result).toEqual({ approved: true });
+  });
+
+  it("still confirms mutating actions when a UI is present", async () => {
+    const ui = { confirm: vi.fn(async () => true) };
+    const config = createConfig();
+
+    const result = await confirmAction(config, "demo", "delete_all", {}, ui as never, undefined, false);
+
+    expect(ui.confirm).toHaveBeenCalled();
+    expect(result).toEqual({ approved: true });
+  });
+
   it("serializes concurrent prompts so parallel calls cannot clobber the dialog", async () => {
     const resolvers: Array<(value: boolean) => void> = [];
     let active = 0;
@@ -191,5 +219,54 @@ describe("confirmAction", () => {
     expect(ui.confirm).toHaveBeenCalledWith("MCP action permission", expect.any(String), {
       signal: controller.signal,
     });
+  });
+
+  it("emits a permission-ask event when a confirmation dialog is shown", async () => {
+    const seen: Array<{ serverName: string; toolName: string }> = [];
+    const off = onPermissionAsk((detail) => seen.push(detail));
+    try {
+      const ui = { confirm: vi.fn(async () => true) };
+      const config = createConfig();
+
+      await confirmAction(config, "demo", "delete_all", {}, ui as never);
+
+      expect(seen).toEqual([{ serverName: "demo", toolName: "delete_all" }]);
+    } finally {
+      off();
+    }
+  });
+
+  it("does not emit for read-only, allow-mode, or headless-refused actions", async () => {
+    const seen: Array<{ serverName: string; toolName: string }> = [];
+    const off = onPermissionAsk((detail) => seen.push(detail));
+    try {
+      const ui = { confirm: vi.fn(async () => true) };
+      const allowConfig = createConfig({ settings: { actionPermission: "allow" } });
+      const askConfig = createConfig();
+
+      await confirmAction(allowConfig, "demo", "delete_all", {}, ui as never);
+      await confirmAction(askConfig, "demo", "list_files", {}, ui as never, undefined, true);
+      await confirmAction(askConfig, "demo", "delete_all", {}, undefined);
+
+      expect(seen).toEqual([]);
+    } finally {
+      off();
+    }
+  });
+
+  it("is not broken by a failing listener", async () => {
+    const off = onPermissionAsk(() => {
+      throw new Error("boom");
+    });
+    try {
+      const ui = { confirm: vi.fn(async () => true) };
+      const config = createConfig();
+
+      const result = await confirmAction(config, "demo", "delete_all", {}, ui as never);
+
+      expect(result).toEqual({ approved: true });
+    } finally {
+      off();
+    }
   });
 });

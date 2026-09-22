@@ -210,7 +210,7 @@ You can also pass only the `code` query parameter with `args: '{"code":"..."}'`.
 | `directTools` | Global default for all servers (default: false). Per-server overrides this. |
 | `disableProxyTool` | Hide the `mcp` proxy tool once configured direct tools are fully available from cache. |
 | `autoAuth` | Auto-run OAuth on `connect`/tool calls when a server needs auth, then retry once (default: false). |
-| `actionPermission` | Permission mode for running MCP actions: `"ask"` (default) confirms with the user before every proxy tool call and direct tool call, `"allow"` runs them without asking. Per-server `actionPermission` overrides this. In headless sessions the default `"ask"` refuses actions (set `"allow"` to run without confirmation). |
+| `actionPermission` | Permission mode for running MCP actions: `"ask"` (default) confirms with the user before every mutating proxy tool call and direct tool call, `"allow"` runs them without asking. Read-only actions (server-declared `readOnlyHint` or resource reads) always run without confirmation. Per-server `actionPermission` overrides this. In headless sessions the default `"ask"` refuses mutating actions (set `"allow"` to run without confirmation). |
 | `sampling` | Allow MCP servers to sample through Pi models, honoring `modelPreferences.hints` before current/default fallback (default: true when UI approval is available). |
 | `samplingAutoApprove` | Skip sampling confirmation prompts. Required for sampling in non-UI sessions (default: false). |
 | `elicitation` | Allow MCP servers to request user input through Pi dialogs (default: true when Pi UI is available). |
@@ -219,7 +219,11 @@ Per-server `idleTimeout` overrides the global setting.
 
 ### Action Permissions
 
-By default the adapter asks for your permission before running any MCP action — both `mcp({ tool: ... })` proxy calls and direct tools. A confirmation dialog shows the server, tool name, and arguments; declining skips the call.
+By default the adapter asks for your permission before running any mutating MCP action — both `mcp({ tool: ... })` proxy calls and direct tools. A confirmation dialog shows the server, tool name, and arguments; declining skips the call.
+
+Read-only actions pass without confirmation: tools the server marks with `readOnlyHint` (MCP's analog of safe HTTP methods) and resource reads, which cannot mutate server state. Everything else is confirmed.
+
+**Notifications from other extensions:** right before a confirmation dialog appears, the adapter emits an event on a global bus that other extensions in the same pi process can subscribe to — e.g. to post a macOS notification when the agent is waiting for approval. The bus lives at `globalThis["__piMcpAdapterPermissionAskListeners__"]` as a `Set` of `(detail: { serverName, toolName }) => void` listeners. Both sides join the same Set, so extension load order does not matter. Read-only and auto-approved actions never emit.
 
 To run MCP actions without asking, set `actionPermission` to `"allow"` — globally or per server:
 
@@ -238,7 +242,7 @@ To run MCP actions without asking, set `actionPermission` to `"allow"` — globa
 }
 ```
 
-Per-server `actionPermission` overrides the global setting. In headless sessions the default `"ask"` mode refuses actions with a hint, since there is no UI to confirm with — set `"allow"` if you want unattended runs.
+Per-server `actionPermission` overrides the global setting. In headless sessions the default `"ask"` mode refuses mutating actions with a hint, since there is no UI to confirm with — read-only actions still run. Set `"allow"` if you want unattended runs.
 
 ### MCP Elicitation
 

@@ -149,6 +149,7 @@ export function resolveDirectTools(
         inputSchema: tool.inputSchema,
         uiResourceUri: tool.uiResourceUri,
         uiStreamMode: tool.uiStreamMode,
+        readOnly: tool.readOnly,
       });
     }
 
@@ -173,6 +174,7 @@ export function resolveDirectTools(
           prefixedName,
           description: resource.description ?? `Read resource: ${resource.uri}`,
           resourceUri: resource.uri,
+          readOnly: true,
         });
       }
     }
@@ -344,7 +346,7 @@ export function createDirectToolExecutor(
 
     let uiSession: UiSessionRuntime | null = null;
 
-    const permission = await confirmAction(state.config, spec.serverName, spec.originalName, params ?? {}, ctx?.ui ?? state.ui, signal);
+    const permission = await confirmAction(state.config, spec.serverName, spec.originalName, params ?? {}, ctx?.ui ?? state.ui, signal, spec.readOnly);
     if (!permission.approved) {
       return {
         content: [{ type: "text" as const, text: permission.reason ?? "MCP action was not approved" }],

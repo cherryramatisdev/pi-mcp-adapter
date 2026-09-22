@@ -20,12 +20,22 @@ export type ImportKind =
   | "windsurf" 
   | "vscode";
 
+// Tool annotations from MCP server (hints only, never trustworthy)
+export interface McpToolAnnotations {
+  title?: string;
+  readOnlyHint?: boolean;
+  destructiveHint?: boolean;
+  idempotentHint?: boolean;
+  openWorldHint?: boolean;
+}
+
 // Tool definition from MCP server
 export interface McpTool {
   name: string;
   title?: string;
   description?: string;
   inputSchema?: unknown; // JSON Schema
+  annotations?: McpToolAnnotations;
   _meta?: Record<string, unknown>;
 }
 
@@ -365,6 +375,8 @@ export interface ToolMetadata {
   uiResourceUri?: string; // For app-enabled tools: the UI resource URI
   inputSchema?: unknown;  // JSON Schema for parameters (stored for describe/errors)
   uiStreamMode?: UiStreamMode;
+  /** True when the server declares the tool read-only or it reads a resource. */
+  readOnly?: boolean;
 }
 
 export interface DirectToolSpec {
@@ -376,6 +388,8 @@ export interface DirectToolSpec {
   resourceUri?: string;
   uiResourceUri?: string;
   uiStreamMode?: UiStreamMode;
+  /** True when the server declares the tool read-only or it reads a resource. */
+  readOnly?: boolean;
 }
 
 export interface ServerProvenance {
