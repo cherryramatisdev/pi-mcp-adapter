@@ -116,6 +116,7 @@ function createPi() {
       registerTool: vi.fn(),
       registerFlag: vi.fn(),
       registerCommand: vi.fn(),
+      registerShortcut: vi.fn(),
       appendEntry: vi.fn(),
       on: vi.fn((event: string, handler: (...args: any[]) => unknown) => {
         handlers.set(event, handler);
@@ -168,6 +169,9 @@ describe("mcpAdapter command mode (/enable-mcp)", () => {
     mcpAdapter(api);
 
     expect(findCommand(api, "enable-mcp")).toBeDefined();
+    expect(api.registerShortcut).toHaveBeenCalledWith("alt+m", expect.objectContaining({
+      description: "Enable MCP server connections and tools for this session",
+    }));
     expect(findCommand(api, "mcp")).toBeDefined();
     expect(findCommand(api, "mcp-auth")).toBeDefined();
     expect(api.registerTool).not.toHaveBeenCalled();
@@ -259,6 +263,7 @@ function apiFor(handlers: Map<string, (...args: any[]) => unknown>) {
       registerTool: vi.fn(),
       registerFlag: vi.fn(),
       registerCommand: vi.fn(),
+      registerShortcut: vi.fn(),
       appendEntry: vi.fn(),
       on: vi.fn((event: string, handler: (...args: any[]) => unknown) => {
         handlers.set(event, handler);

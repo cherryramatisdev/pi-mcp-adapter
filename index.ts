@@ -1,4 +1,5 @@
 import type { ExtensionAPI, ExtensionContext, ToolInfo } from "@earendil-works/pi-coding-agent";
+import { Key } from "@earendil-works/pi-tui";
 import type { McpExtensionState } from "./state.ts";
 import { Type } from "typebox";
 import { showStatus, showTools, reconnectServers, authenticateServer, logoutServer, openMcpConnectDialog, openMcpSetupDialog, openMcpAuthDialog, toggleDirectToolsDialog, type PanelFlowResult } from "./commands.ts";
@@ -421,19 +422,26 @@ export default function mcpAdapter(pi: ExtensionAPI) {
   }
 
   // Always available: activate MCP from within a session started without --mcp.
+  const enableMcp = async (ctx: ExtensionContext): Promise<void> => {
+    if (enabledByFlag || surfaceRegistered) {
+      if (ctx.hasUI) ctx.ui.notify("MCP is already enabled", "info");
+      return;
+    }
+
+    pi.appendEntry(ENABLED_ENTRY_TYPE, { enabled: true });
+    registerSurface();
+    if (ctx.hasUI) ctx.ui.notify("MCP enabled. Run /mcp for status.", "info");
+    void initForSession(ctx);
+  };
+
   pi.registerCommand("enable-mcp", {
     description: "Enable MCP server connections and tools for this session",
-    handler: async (_args, ctx) => {
-      if (enabledByFlag || surfaceRegistered) {
-        if (ctx.hasUI) ctx.ui.notify("MCP is already enabled", "info");
-        return;
-      }
+    handler: async (_args, ctx) => enableMcp(ctx),
+  });
 
-      pi.appendEntry(ENABLED_ENTRY_TYPE, { enabled: true });
-      registerSurface();
-      if (ctx.hasUI) ctx.ui.notify("MCP enabled. Run /mcp for status.", "info");
-      void initForSession(ctx);
-    },
+  pi.registerShortcut(Key.alt("m"), {
+    description: "Enable MCP server connections and tools for this session",
+    handler: enableMcp,
   });
 
   if (enabledByFlag) {
